@@ -1,11 +1,19 @@
 from pygame import * 
 player_image = 'img/hero/m1.png'
-win_width = 800 
+img_file_enemy = "img/enemy.png.png"
+win_width = 800
 win_height = 600
 window = display.set_mode((win_width,win_height))
 backg = 'img/back.png'
 display.set_caption('Arcade')
 background = transform.scale(image.load(backg),(win_width,win_height))
+C_WHITE = (255, 255, 255)
+C_DARK = (48, 48, 0)
+C_YELLOW = (204,204,204)
+C_GREEN = (63,113,77)
+C_BLUE = (20, 147, 181)
+C_RED = (255, 0, 0)
+C_BLACK = (0, 0, 0)
 walkRight = [image.load('img/hero/right_1.png'),
 image.load('img/hero/right_2.png'),
 image.load('img/hero/right_3.png'),
@@ -55,7 +63,28 @@ class Gamesprite(sprite.Sprite):
         self.rect.x += self.x_speed
         self.gravitate()
         self.rect.y += self.y_speed
+        platforms_touched = sprite.spritecollide(self, barriers, False)
+        if self.y_speed > 0:
+            for p in platforms_touched:
+                self.y_speed = 0
 
+                if p.rect.top < self.rect.bottom:
+                    self.rect.bottom = p.rect.top 
+                    self.stands_on = p
+        if self.y_speed < 0:
+            self.stands_on = False
+            for p in platforms_touched:
+                self.y_speed = 0
+                if p.rect.bottom > self.rect.top:
+                    self.rect.top = p.rect.bottom
+        platforms_touched = sprite.spritecollide(self, barriers, False)
+        if self.x_speed > 0:
+            for p in platforms_touched:
+                self.rect.right = min(self.rect.right, p.rect.left)
+        elif self.x_speed < 0:
+            for p in platforms_touched:
+                self.rect.left = max(self.rect.left, p.rect.right)
+            
     def gravitate(self):
         self.y_speed += 0.25
 
@@ -75,13 +104,62 @@ class Gamesprite(sprite.Sprite):
         img_counter +=1 
         window.blit(self.image,(0,78))
 
+class Enemy(Gamesprite):
+    side = 'left'
+    def update(self):
+        if self.rect.x <= 0:
+            self.side = 'right'
+        if self.rect.x >= win_width /2:
+            self.side = "left"
+        if self.side == "left":
+            self.rect.x -= self.x_speed
+        else: 
+            self.rect.x += self.x_speed 
+class Wall(sprite.Sprite):
+    def __init__(self, x, y, width, height, color=C_GREEN):
+        super().__init__()
+        self.image = Surface([width, height])
+        self.image.fill(color)
+
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+    
+enemies = sprite.Group()
+bombs = sprite.Group()
+all_sprites = sprite.Group()
+barriers = sprite.Group()
+en = Enemy(img_file_enemy, 50, 480, 110, 110, 2, 0)
+all_sprites.add(en)
+enemies.add(en)
+en = Enemy(img_file_enemy, 400, 480, 110, 110, 2, 0)
+all_sprites.add(en)
+enemies.add(en)
+pr = Gamesprite(img_file_princess, win_width + 500, win_height - 125, 80, 120, 0)
+all_sprites.add(pr)
 robin = Gamesprite(player_image,50,50,80,120,12,12)
+w = Wall(50, 150, 480, 20)
+barriers.add(w)
+all_sprites.add(w)
+w = Wall(700,0,30,400)
+barriers.add(w)
+all_sprites.add(w)
+w = Wall(350, 380, 640, 20)
+barriers.add(w)
+all_sprites.add(w)
+w = Wall(-200, 590, 1600, 20)
+barriers.add(w)
+all_sprites.add(w)
 finish = False
 game = True
+
+
 while game:
     for e in event.get():
         if e.type == QUIT:
             game = False
+    if not finish:
+        all_sprites.update()
     window.blit(background,(0,0))
     robin.draw_hero()
     robin.update()
